@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<meta name="mobile-web-app-capable" content="yes">
+
+<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)">
+
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+
+<title>Suivi des selles</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+
+<style>
+
+:root{
+
+  --surface-0:#f7f6f3;--surface-1:#f1f0ec;--surface-2:#ffffff;
+
+  --text-primary:#0b0b0b;--text-secondary:#52514e;--text-muted:#898781;
+
+  --border:rgba(11,11,11,.10);--border-strong:rgba(11,11,11,.18);
+
+  --bg-accent:#e6f1fb;--text-accent:#185fa5;--border-accent:#85b7eb;
+
+  --fill-accent:#2a78d6;--on-accent:#ffffff;
+
+  --bg-success:#eaf3de;--text-success:#3b6d11;
+
+  --bg-danger:#fcebeb;--text-danger:#a32d2d;--border-danger:#f09595;
+
+  --text-warning:#854f0b;
+
+  --radius:8px;--font-mono:ui-monospace,Menlo,Consolas,monospace;
+
+}
+
+@media (prefers-color-scheme:dark){:root{
+
+  --surface-0:#1a1a19;--surface-1:#242422;--surface-2:#2c2c2a;
+
+  --text-primary:#f0efec;--text-secondary:#c3c2b7;--text-muted:#898781;
+
+  --border:rgba(255,255,255,.10);--border-strong:rgba(255,255,255,.18);
+
+  --bg-accent:#0c447c;--text-accent:#b5d4f4;--border-accent:#378add;
+
+  --fill-accent:#3987e5;
+
+  --bg-success:#27500a;--text-success:#c0dd97;
+
+  --bg-danger:#501313;--text-danger:#f7c1c1;--border-danger:#a32d2d;
+
+  --text-warning:#fac775;
+
+}}
+
+*{box-sizing:border-box}
+
+html,body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+
+main{max-width:680px;margin:0 auto;padding:16px 14px 40px}
+
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+button{font:inherit;color:var(--text-primary);background:transparent;border:.5px solid var(--border-strong);border-radius:var(--radius);height:36px;padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+
+button:active{transform:scale(.98)}
+
+input[type=text],input[type=datetime-local],textarea{font:inherit;font-size:16px;color:var(--text-primary);background:var(--surface-2);border:.5px solid var(--border-strong);border-radius:var(--radius);height:40px;padding:0 10px}
+
+textarea{height:auto}
+
+input[type=range]{accent-color:var(--fill-accent)}
+
+#app{font-size:14px}
+
+#app .nav{display:flex;gap:2px;border-bottom:.5px solid var(--border);margin:0 0 1rem;align-items:center;flex-wrap:wrap}
+
+#app .nav button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 14px;height:40px;color:var(--text-secondary)}
+
+#app .nav button.on{color:var(--text-primary);border-bottom-color:var(--text-primary)}
+
+#app .card{background:var(--surface-2);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin:0 0 12px}
+
+#app .lbl{font-size:13px;color:var(--text-secondary);margin:0 0 6px}
+
+#app .chips{display:flex;flex-wrap:wrap;gap:6px}
+
+#app .chip{font-size:13px;padding:4px 12px;border-radius:999px;height:auto;min-height:34px}
+
+#app .chip.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+
+#app .row{display:flex;gap:10px;align-items:center}
+
+#app h3{margin:0;font-size:16px;font-weight:500}
+
+#app details summary{cursor:pointer;font-size:13px;color:var(--text-secondary)}
+
+</style>
+
+</head>
+
+<body>
+
+<main>
+
+<h1 class="sr-only">Suivi des selles</h1>
+
+<div id="app"><div class="nav" id="nav"></div><div id="view"></div></div>
+
+</main>
+
+<script>
+
+const $=s=>document.querySelector(s),KEY='suivi_selles_v1';
+
+const BR=[[1,'Billes dures','Constipation'],[2,'Grumeleuse','Constipation'],[3,'Craquelée','Normale'],[4,'Lisse, molle','Idéale'],[5,'Morceaux mous','Molle'],[6,'Pâteuse','Diarrhée légère'],[7,'Liquide','Diarrhée']];
+
+const COL=['#eda100','#eda100','#1baf7a','#1baf7a','#ec835a','#ec835a','#d03b3b'];
+
+const cat=b=>b<=2?0:b<=4?1:2,CATN=['Dures','Normales','Molles ou liquides'],CATC=['#eda100','#1baf7a','#d03b3b'];
+
+const PAIN=[[0,'Aucune'],['v','Ventre'],['a','Anus'],['va','Les deux']],BLOOD=['Non','Un peu','Beaucoup'];
+
+const p2=n=>String(n).padStart(2,'0'),dstr=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`,lISO=d=>dstr(d)+'T'+p2(d.getHours())+':'+p2(d.getMinutes());
+
+const fmtLong=s=>new Date(s+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+
+const f1=x=>x.toFixed(1).replace('.',',');
+
+let persist=true,mem=[];
+
+function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):[]}catch(e){persist=false;return mem}}
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S.E));persist=true}catch(e){persist=false;mem=S.E}}
+
+const blank=()=>({ts:lISO(new Date()),b:null,pain:0,pi:4,blood:0,strain:false,note:''});
+
+let S={E:load(),tab:'add',d:blank(),time:false,err:'',msg:'',per:7,del:null,copied:false,io:false};
+
+
+
+function shape(b){const f='var(--text-secondary)';const P={
+
+1:`<circle cx="14" cy="16" r="5" fill="${f}"/><circle cx="28" cy="12" r="4.5" fill="${f}"/><circle cx="40" cy="18" r="5" fill="${f}"/><circle cx="52" cy="13" r="4" fill="${f}"/>`,
+
+2:`<g fill="${f}"><circle cx="14" cy="15" r="6"/><circle cx="23" cy="13" r="6.5"/><circle cx="32" cy="15" r="6"/><circle cx="41" cy="13" r="6.5"/><circle cx="50" cy="15" r="6"/></g>`,
+
+3:`<rect x="6" y="9" width="52" height="13" rx="6.5" fill="${f}"/><path d="M18 9v5M28 22v-5M38 9v4M47 22v-5" stroke="var(--surface-2)" stroke-width="1.5"/>`,
+
+4:`<path d="M6 17 Q20 6 34 14 T58 12" stroke="${f}" stroke-width="10" fill="none" stroke-linecap="round"/>`,
+
+5:`<g fill="${f}"><ellipse cx="13" cy="16" rx="7" ry="5"/><ellipse cx="30" cy="13" rx="8" ry="5.5"/><ellipse cx="49" cy="17" rx="8" ry="5"/></g>`,
+
+6:`<path d="M6 18 Q10 8 18 13 Q24 6 31 14 Q38 7 44 15 Q52 9 58 17 Q50 24 40 20 Q32 25 24 20 Q14 25 6 18Z" fill="${f}"/>`,
+
+7:`<path d="M4 12 Q12 6 20 12 T36 12 T52 12 T62 12M4 21 Q12 15 20 21 T36 21 T52 21 T62 21" stroke="${f}" stroke-width="2.5" fill="none"/>`};
+
+return `<svg viewBox="0 0 64 30" width="64" height="30" aria-hidden="true">${P[b]}</svg>`}
+
+const sq=c=>`<span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block;flex:none"></span>`;
+
+
+
+function nav(){$('#nav').innerHTML=[['add','ti-plus','Noter'],['hist','ti-list','Historique'],['sum','ti-chart-bar','Bilan']].map(t=>`<button data-act="tab" data-v="${t[0]}" class="${S.tab==t[0]?'on':''}"><i class="ti ${t[1]}" aria-hidden="true"></i>${t[2]}</button>`).join('')+(persist?'':`<span style="margin-left:auto;font-size:12px;color:var(--text-warning)">Enregistrement impossible : exportez vos données</span>`)}
+
+
+
+function vAdd(){const d=S.d,today=dstr(new Date()),T=S.E.filter(e=>e.ts.startsWith(today));let h='';
+
+if(S.msg)h+=`<div class="row" style="background:var(--bg-success);color:var(--text-success);border-radius:var(--radius);padding:10px 12px;margin:0 0 12px;font-size:13px"><i class="ti ti-check" aria-hidden="true"></i>${S.msg}</div>`;
+
+h+=`<div class="card"><div class="row" style="justify-content:space-between;margin:0 0 4px"><h3>À quoi ressemblait la selle ?</h3><button data-act="time" style="font-size:12px;height:30px;padding:0 10px"><i class="ti ti-clock" aria-hidden="true"></i> ${S.time?'Masquer':d.ts.slice(11,16)}</button></div>${S.time?`<input type="datetime-local" data-in="ts" value="${d.ts}" style="width:230px;margin:6px 0">`:''}<p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px">Touchez la forme la plus proche. Les types 3 et 4 sont les plus normaux.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px">${BR.map(([n,t,c],k)=>{const o=d.b===n;return `<button data-act="b" data-v="${n}" aria-pressed="${o}" style="height:auto;padding:10px 6px;flex-direction:column;gap:4px;${o?'border:1.5px solid var(--border-accent);background:var(--bg-accent)':''}"><span style="font-size:13px;font-weight:500">Type ${n}</span>${shape(n)}<span style="font-size:12px">${t}</span><span class="row" style="gap:4px;font-size:11px;color:var(--text-secondary)">${sq(COL[k])}${c}</span></button>`}).join('')}</div>`;
+
+h+=`<div style="margin-top:16px;display:grid;gap:14px">
+
+<div><div class="lbl">Douleur</div><div class="chips">${PAIN.map(([v,l])=>`<button class="chip ${d.pain===v?'on':''}" data-act="pain" data-v="${v}">${l}</button>`).join('')}</div>${d.pain?`<div class="row" style="margin-top:8px"><span style="font-size:13px;color:var(--text-secondary)">Intensité</span><input type="range" min="1" max="10" step="1" value="${d.pi}" data-in="pi" style="flex:1" aria-label="Intensité de la douleur"><span id="piv" style="font-weight:500;min-width:44px;text-align:right">${d.pi}/10</span></div>`:''}</div>
+
+<div><div class="lbl">Sang</div><div class="chips">${BLOOD.map((l,i)=>`<button class="chip ${d.blood===i?'on':''}" data-act="blood" data-v="${i}">${l}</button>`).join('')}<button class="chip ${d.strain?'on':''}" data-act="strain" style="margin-left:8px">${d.strain?'<i class="ti ti-check" aria-hidden="true"></i> ':''}Effort pour pousser</button></div></div>
+
+<div><input type="text" data-in="note" value="${d.note.replace(/"/g,'&quot;')}" placeholder="Note (facultatif) : repas, médicament…" style="width:100%"></div></div>`;
+
+if(d.blood===2)h+=`<div style="background:var(--bg-danger);color:var(--text-danger);border-radius:var(--radius);padding:10px 12px;font-size:13px;margin-top:12px;line-height:1.6">Un saignement abondant justifie un avis médical rapide. En cas de malaise ou de saignement important, appelez le 15.</div>`;
+
+h+=`<div class="row" style="justify-content:flex-end;margin-top:14px">${S.err?`<span style="font-size:13px;color:var(--text-danger);margin-right:auto">${S.err}</span>`:''}<button data-act="save" style="background:var(--fill-accent);color:var(--on-accent);border:none;padding:0 20px;height:42px"><i class="ti ti-check" aria-hidden="true"></i> Enregistrer</button></div></div>`;
+
+h+=`<div class="card"><div class="row" style="justify-content:space-between"><h3>Aujourd'hui</h3><span style="font-size:13px;color:var(--text-secondary)">${T.length} selle${T.length>1?'s':''}</span></div>${T.length?list(T):`<p style="font-size:13px;color:var(--text-muted);margin:8px 0 0">Rien de noté pour l'instant.</p>`}</div>`;
+
+return h}
+
+
+
+function list(L){return [...L].sort((a,b)=>a.ts<b.ts?1:-1).map((e,k)=>`<div class="row" style="padding:10px 0;${k?'border-top:.5px solid var(--border)':'margin-top:6px'}"><span style="font-size:13px;font-weight:500;min-width:42px">${e.ts.slice(11,16)}</span>${shape(e.b)}<div style="flex:1;font-size:13px;min-width:0"><div class="row" style="gap:6px">${sq(COL[e.b-1])}Type ${e.b} · ${BR[e.b-1][2].toLowerCase()}</div><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${[e.pain?`douleur ${PAIN.find(p=>p[0]==e.pain)[1].toLowerCase()} ${e.pi}/10`:'',e.blood?`<span style="color:var(--text-danger)">sang : ${BLOOD[e.blood].toLowerCase()}</span>`:'',e.strain?'effort':'',e.note].filter(Boolean).join(' · ')||'Rien à signaler'}</div></div><button data-act="del" data-v="${e.id}" aria-label="Supprimer" style="height:30px;padding:0 8px;font-size:12px;${S.del==e.id?'color:var(--text-danger);border-color:var(--border-danger)':''}">${S.del==e.id?'Confirmer':'<i class="ti ti-trash"></i>'}</button></div>`).join('')}
+
+
+
+function vHist(){if(!S.E.length)return empty();const g={};S.E.forEach(e=>(g[e.ts.slice(0,10)]=g[e.ts.slice(0,10)]||[]).push(e));
+
+return Object.keys(g).sort().reverse().map(dd=>`<div class="row" style="justify-content:space-between;margin:14px 0 6px;font-size:13px;color:var(--text-secondary)"><span>${fmtLong(dd)}</span><span>${g[dd].length} selle${g[dd].length>1?'s':''}</span></div><div class="card" style="padding:0 1.25rem 4px">${list(g[dd])}</div>`).join('')+data()}
+
+
+
+function data(){return `<details class="card" style="margin-top:1.25rem" ${S.io?'open':''}><summary><i class="ti ti-database" aria-hidden="true"></i> Sauvegarder ou récupérer mes données</summary><p style="font-size:13px;color:var(--text-secondary);line-height:1.6">Vos données restent dans ce navigateur, sur cet appareil. Copiez l'export pour en garder une copie, et collez-le ici pour le retrouver (sur un autre appareil par exemple).</p><textarea id="ioT" rows="3" style="width:100%;font-family:var(--font-mono);font-size:12px;padding:8px">${JSON.stringify(S.E)}</textarea><div class="chips" style="margin-top:6px"><button data-act="copy" data-v="ioT"><i class="ti ti-copy" aria-hidden="true"></i> ${S.copied=='ioT'?'Copié':'Copier'}</button><button data-act="imp"><i class="ti ti-upload" aria-hidden="true"></i> Importer le texte collé</button><span id="impE" style="font-size:13px;color:var(--text-danger);align-self:center"></span></div></details>`}
+
+function empty(){return `<div class="card" style="text-align:center;padding:2rem 1.25rem"><h3 style="margin:0 0 6px">Pas encore de selle notée</h3><p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px">Notez chaque selle pendant une à deux semaines pour un bilan parlant.</p><div class="chips" style="justify-content:center"><button data-act="tab" data-v="add">Noter une selle</button></div></div>`}
+
+
+
+function vSum(){let h=`<div class="chips" style="margin:0 0 12px">${[[7,'7 jours'],[14,'14 jours'],[30,'30 jours']].map(([v,l])=>`<button class="chip ${S.per==v?'on':''}" data-act="per" data-v="${v}">${l}</button>`).join('')}</div>`;
+
+const days=[];for(let i=S.per-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(dstr(d))}
+
+const E=S.E.filter(e=>e.ts.slice(0,10)>=days[0]);if(!E.length)return h+empty();
+
+const n=E.length,norm=E.filter(e=>cat(e.b)==1).length,dz=days.filter(d=>!E.some(e=>e.ts.startsWith(d))).length,pain=E.filter(e=>e.pain),blood=E.filter(e=>e.blood),strain=E.filter(e=>e.strain);
+
+const met=(l,v,s)=>`<div style="background:var(--surface-1);border-radius:var(--radius);padding:12px"><div style="font-size:13px;color:var(--text-secondary)">${l}</div><div style="font-size:24px;font-weight:500">${v}</div><div style="font-size:12px;color:var(--text-muted)">${s}</div></div>`;
+
+h+=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:0 0 12px">${met('Selles par jour',f1(n/S.per),`${n} au total`)}${met('Normales (3–4)',Math.round(100*norm/n)+' %',`${norm} sur ${n}`)}${met('Jours sans selle',dz,`sur ${S.per} jours`)}${met('Avec douleur',pain.length,blood.length?`dont sang : ${blood.length}`:'aucun saignement')}</div>`;
+
+const mx=Math.max(3,...days.map(d=>E.filter(e=>e.ts.startsWith(d)).length));
+
+h+=`<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h3>Jour par jour</h3><div class="row" style="gap:12px;font-size:12px;color:var(--text-secondary);flex-wrap:wrap">${CATN.map((c,i)=>`<span class="row" style="gap:4px">${sq(CATC[i])}${c}</span>`).join('')}</div></div><p style="font-size:12px;color:var(--text-muted);margin:4px 0 12px">Chaque carré est une selle, avec son type. Un point rouge signale du sang.</p><div style="display:flex;gap:${S.per>14?2:6}px;align-items:flex-end;height:${mx*22+30}px">${days.map(d=>{const es=S.E.filter(e=>e.ts.startsWith(d)).sort((a,b)=>a.ts<b.ts?-1:1);return `<div style="flex:1;min-width:0;display:flex;flex-direction:column-reverse;align-items:center;gap:3px;height:100%"><span style="font-size:11px;color:var(--text-muted);margin-top:4px;white-space:nowrap">${S.per>14?(d.slice(8)%5==0||d==days[days.length-1]?+d.slice(8):''):new Date(d+'T12:00').toLocaleDateString('fr-FR',{weekday:'narrow'})+' '+(+d.slice(8))}</span>${es.map(e=>`<div title="${e.ts.slice(11,16)} · type ${e.b}${e.blood?' · sang':''}" style="width:100%;max-width:26px;height:18px;border-radius:4px;background:${CATC[cat(e.b)]};color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;position:relative">${S.per>14?'':e.b}${e.blood?'<span style="position:absolute;top:-3px;right:-3px;width:7px;height:7px;border-radius:50%;background:#d03b3b;border:1.5px solid var(--surface-2)"></span>':''}</div>`).join('')}</div>`}).join('')}</div></div>`;
+
+const bc=BR.map(b=>E.filter(e=>e.b==b[0]).length),bm=Math.max(...bc);
+
+h+=`<div class="card"><h3>Répartition par type</h3><div style="margin-top:10px">${BR.map(([b,t],i)=>`<div class="row" style="margin:0 0 6px;font-size:13px"><span style="min-width:120px">Type ${b} · ${t.toLowerCase()}</span><div style="flex:1;height:10px;background:var(--surface-1);border-radius:4px"><div style="height:10px;width:${bm?Math.round(100*bc[i]/bm):0}%;background:${COL[i]};border-radius:4px"></div></div><span style="min-width:24px;text-align:right">${bc[i]}</span></div>`).join('')}</div></div>`;
+
+const obs=[],hard=E.filter(e=>e.b<=2),ok=E.filter(e=>e.b>=3);
+
+if(hard.length/n>=.4)obs.push(`Vos selles sont souvent dures (${Math.round(100*hard.length/n)} %). Boire davantage et augmenter les fibres aide souvent ; à voir avec votre médecin.`);
+
+if(E.filter(e=>e.b>=6).length/n>=.3)obs.push(`Les selles molles ou liquides sont fréquentes (${E.filter(e=>e.b>=6).length} sur ${n}).`);
+
+const pa=x=>x.length?x.filter(e=>e.pain&&e.pain.includes('a')).length/x.length:0;if(hard.length>=2&&ok.length>=2&&pa(hard)-pa(ok)>=.3)obs.push(`La douleur à l'anus survient surtout avec les selles dures (${Math.round(100*pa(hard))} % contre ${Math.round(100*pa(ok))} % sinon).`);
+
+if(dz>=Math.ceil(S.per/3))obs.push(`${dz} jours sans selle sur ${S.per}.`);
+
+if(blood.length)obs.push(`Du sang a été noté ${blood.length} fois : à signaler à votre médecin, même si c'est peu.`);
+
+if(obs.length)h+=`<div class="card"><h3>À retenir</h3>${obs.map(o=>`<p style="font-size:13px;line-height:1.6;margin:8px 0 0;padding-top:8px;border-top:.5px solid var(--border)">${o}</p>`).join('')}</div>`;
+
+const rep=`Suivi des selles sur ${S.per} jours : ${n} selles (${f1(n/S.per)} par jour), ${dz} jours sans selle.\nTypes (Bristol) : ${BR.map((b,i)=>bc[i]?`type ${b[0]} ×${bc[i]}`:'').filter(Boolean).join(', ')}.\nNormales (3–4) : ${Math.round(100*norm/n)} %.\nDouleur : ${pain.length} fois (ventre ${pain.filter(e=>e.pain.includes('v')).length}, anus ${pain.filter(e=>e.pain.includes('a')).length}${pain.length?', intensité moyenne '+f1(pain.reduce((s,e)=>s+e.pi,0)/pain.length)+'/10':''}).\nSang : ${blood.length} fois. Effort de poussée : ${strain.length} fois.`;
+
+h+=`<div class="card"><h3>Résumé pour le médecin</h3><textarea id="rep" rows="5" readonly style="width:100%;margin-top:8px;font-size:13px;line-height:1.6;padding:10px">${rep}</textarea><button data-act="copy" data-v="rep" style="margin-top:6px"><i class="ti ti-copy" aria-hidden="true"></i> ${S.copied=='rep'?'Copié':'Copier'}</button></div>`;
+
+return h}
+
+
+
+function render(){nav();$('#view').innerHTML={add:vAdd,hist:vHist,sum:vSum}[S.tab]()}
+
+const app=$('#app');
+
+app.addEventListener('click',async ev=>{const t=ev.target.closest('[data-act]');if(!t)return;const a=t.dataset.act,v=t.dataset.v,d=S.d;if(a!='del')S.del=null;if(a!='copy')S.copied=false;
+
+if(a=='tab'){S.tab=v;S.msg='';S.err=''}else if(a=='b'){d.b=+v;S.err='';S.msg=''}else if(a=='pain'){d.pain=v=='0'?0:v}else if(a=='blood')d.blood=+v;else if(a=='strain')d.strain=!d.strain;else if(a=='time')S.time=!S.time;
+
+else if(a=='save'){if(!d.b){S.err="Choisissez d'abord le type de selle."}else{S.E.push({...d,pi:d.pain?d.pi:0,id:Date.now()});S.E.sort((x,y)=>x.ts<y.ts?-1:1);save();S.d=blank();S.time=false;S.msg='Selle enregistrée.'}}
+
+else if(a=='del'){if(S.del==v){S.E=S.E.filter(e=>String(e.id)!=v);save();S.del=null}else S.del=v}
+
+else if(a=='per')S.per=+v;
+
+else if(a=='copy'){const el=$('#'+v);try{await navigator.clipboard.writeText(el.value);S.copied=v}catch(e){el.select();t.textContent='Sélectionné : copiez-le';return}}
+
+else if(a=='imp'){try{const arr=JSON.parse($('#ioT').value);if(!Array.isArray(arr))throw 0;const ids=new Set(S.E.map(e=>e.id));arr.forEach(e=>{if(e&&e.ts&&e.b&&!ids.has(e.id))S.E.push(e)});S.E.sort((x,y)=>x.ts<y.ts?-1:1);save();S.io=true}catch(e){$('#impE').textContent="Texte non reconnu. Collez un export complet.";return}}
+
+render()});
+
+app.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;S.d[k]=k=='pi'?+t.value:t.value;if(k=='pi')$('#piv').textContent=t.value+'/10'});
+
+render();
+
+</script>
+
+</body>
+
+</html>
